@@ -4,16 +4,25 @@
 # PRCA (Pseudo-Random Compression Algorithm)
 
 from functools import reduce
+from random import randint
+
+
+def random():
+    return randint(0, 0xFFFFFFFF)
 
 
 # Affine/Linear Congruential Generator (Affine/Linear Congruential Pseudo-Random Number Generator)
 class CongruentialGenerator:
-    m = 672257317069504227  # the "multiplier"
-    c = 7382843889490547368  # the "increment"
-    n = 9223372036854775783  # the "modulus"
+    state = 0   # the "seed"
+    n = 0       # the "modulus"
+    m = 0       # the "multiplier"
+    c = 0       # the "increment"
 
-    def __init__(self, seed):
-        self.state = seed  # the "seed"
+    def __init__(self, seed, n, m, c):
+        self.state = seed
+        self.n = n
+        self.m = m
+        self.c = c
 
     def next(self):
         self.state = (self.state * self.m + self.c) % self.n
@@ -51,14 +60,6 @@ def egcd(a, b):
         return (g, x - (b // a) * y, y)
 
 
-# def modinv(a, m):
-#     g, x, y = egcd(a, m)
-#     if g != 1:
-#         raise Exception('modular inverse does not exist')
-#     else:
-#         return x % m
-
-
 def modinv(a, m):
     return pow(a, -1, m)
 
@@ -82,7 +83,7 @@ def crack_unknown_modulus(states):
 
 def test():
     seed = 42
-    prng = CongruentialGenerator(seed)
+    prng = CongruentialGenerator(seed, 0xF0FF931, 0xFF00F924, 0x82302FF2)
     data = [
         prng.next(),
         prng.next(),
