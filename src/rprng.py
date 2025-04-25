@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-# PRCA (Pseudo-Random Compression Algorithm)
+# RPRNG (Reversible Pseudo-Random Number Generator)
 
 from functools import reduce
 from random import randint
@@ -9,24 +12,6 @@ from random import randint
 
 def random():
     return randint(0, 0xFFFFFFFF)
-
-
-# Affine/Linear Congruential Generator (Affine/Linear Congruential Pseudo-Random Number Generator)
-class CongruentialGenerator:
-    state = 0   # the "seed"
-    n = 0       # the "modulus"
-    m = 0       # the "multiplier"
-    c = 0       # the "increment"
-
-    def __init__(self, seed, n, m, c):
-        self.state = seed
-        self.n = n
-        self.m = m
-        self.c = c
-
-    def next(self):
-        self.state = (self.state * self.m + self.c) % self.n
-        return self.state
 
 
 def gcdint(a, b):
@@ -52,14 +37,6 @@ def gcdvec(vector: list[int]):
     return result
 
 
-def egcd(a, b):
-    if a == 0:
-        return (b, 0, 1)
-    else:
-        g, y, x = egcd(b % a, a)
-        return (g, x - (b // a) * y, y)
-
-
 def modinv(a, m):
     return pow(a, -1, m)
 
@@ -81,24 +58,68 @@ def crack_unknown_modulus(states):
     return crack_unknown_multiplier(states, modulus)
 
 
+# Affine/Linear Congruential Generator (Affine/Linear Congruential Pseudo-Random Number Generator)
+class CongruentialGenerator:
+    state = 0   # the "seed"
+    n = 0       # the "modulus"
+    m = 0       # the "multiplier"
+    c = 0       # the "increment"
+
+    def __init__(self, seed, n, m, c):
+        self.state = seed
+        self.n = n
+        self.m = m
+        self.c = c
+
+    def next(self):
+        self.state = self.peek()
+        return self.state
+
+    def peek(self):
+        return (self.state * self.m + self.c) % self.n
+
+
+class RPRNG:
+    def __init__(self, seed: int, cg: CongruentialGenerator = None):
+        self.seed = seed
+        if cg is None:
+            cg = CongruentialGenerator(seed, max(2, 2 + seed), 252705073, 234972692)
+        self.cg = cg
+        self.has_started = False
+
+    def next(self):
+        return self.cg.next()
+
+    def nextvec(self, count):
+        samples = []
+        remaining = count
+        while remaining > 0:
+            sample = self.next()
+            samples.append(sample)
+            remaining -= 1
+        return samples
+
+    @staticmethod
+    def reverse(samples):
+        try:
+            n, m, c = crack_unknown_modulus(samples)
+            seed = n - 2
+            cg = CongruentialGenerator(seed, n, m, c)
+            return RPRNG(seed, cg)
+        except:
+            return None
+
+
 def test():
-    seed = 42
-    prng = CongruentialGenerator(seed, 0xF0FF931, 0xFF00F924, 0x82302FF2)
-    data = [
-        prng.next(),
-        prng.next(),
-        prng.next(),
-        prng.next(),
-        prng.next(),
-        prng.next(),
-        prng.next(),
-        prng.next()
-    ]
-    print(data)
-    n, m, c = crack_unknown_modulus(data)
-    print("n=" + str(n))
-    print("m=" + str(m))
-    print("c=" + str(c))
+    seed = random()
+    rprng = RPRNG(seed)
+    print(rprng.seed)
+    samples = rprng.nextvec(16)
+    rprng = RPRNG.reverse(samples)
+    if rprng is not None:
+        print(rprng.seed)
+    else:
+        print("ERROR: Invalid seed.")
 
 
 test()
