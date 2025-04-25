@@ -1,2 +1,3 @@
-# prca
- Psuedo-Random Compression Algorithm 
+# RPRNG
+
+Reversible Pseudo-Random Number Generator
